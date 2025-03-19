@@ -104,7 +104,7 @@ class ContributeDialog:
         """加载贡献数据"""
         try:
             response = requests.get(
-                "https://douyin-rtmp-config.pages.dev/contribute.json"
+                "https://10.192.168101.xyz/contribute.json"
             )
             data = response.json()
             self.create_tabs(data)

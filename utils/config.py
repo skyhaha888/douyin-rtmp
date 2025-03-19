@@ -1,10 +1,10 @@
 # 版本信息
-VERSION = "v1.0.9"
+VERSION = "v1.0.10"
 # GitHub 相关配置
 GITHUB_CONFIG = {
     "REPO_OWNER": "heplex",
     "REPO_NAME": "douyin-rtmp",
-    "API_URL": "https://douyin-rtmp-config.pages.dev/version.json",
+    "API_URL": "https://10.192.168101.xyz/version.json",
     "RELEASE_URL": "https://github.com/heplex/douyin-rtmp/releases/latest",
     "REPO_URL": "https://github.com/heplex/douyin-rtmp",
 }

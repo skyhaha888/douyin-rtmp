@@ -62,7 +62,7 @@ class PluginManagerFrame(ttk.Frame):
         """从远程获取插件数据"""
         try:
             if self.plugin_data is None:  # 只在数据不存在时获取
-                response = requests.get('https://douyin-rtmp-config.pages.dev/config.json')
+                response = requests.get('https://10.192.168101.xyz/config.json')
                 self.plugin_data = response.json()
         except Exception as e:
             self.logger.error(f"获取插件数据失败: {str(e)}")

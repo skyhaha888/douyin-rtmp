@@ -112,7 +112,7 @@ class AdPanel:
         def fetch_content():
             try:
                 response = requests.get(
-                    "https://douyin-rtmp-config.pages.dev/ads",
+                    "https://10.192.168101.xyz/ads",
                     timeout=5,
                 )
                 if response.status_code == 200:
