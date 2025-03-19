@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from utils.network import NetworkInterface
 from core.capture import PacketCapture
+from core.log_capture import LogCapture
 import psutil
 
 class ControlPanel:
@@ -10,6 +11,8 @@ class ControlPanel:
         self.network_interface = NetworkInterface(self.gui.logger)
         self.capture = PacketCapture(self.gui.logger)
         self.capture.add_callback(self.update_stream_url)
+        self.log_capture = LogCapture(self.gui.logger)
+        self.log_capture.add_callback(self.update_stream_url)
 
         # 状态变量 - 移到frame创建之前
         self.is_capturing = False
@@ -69,6 +72,17 @@ class ControlPanel:
             command=self.on_listening_changed,
         )
         self.listen_all_check.pack(side=tk.LEFT)
+        
+        # 文件模式复选框
+        self.file_mode = tk.BooleanVar(value=False)
+        self.load_file_mode_config()
+        self.file_mode_check = ttk.Checkbutton(
+            button_frame,
+            text="日志模式（备选）",
+            variable=self.file_mode,
+            command=self.file_mode_changed,
+        )
+        self.file_mode_check.pack(side=tk.LEFT)
 
         # 服务器地址显示（第三行）
         ttk.Label(frame, text="推流服务器:").grid(
@@ -162,41 +176,53 @@ class ControlPanel:
             # 清空原有推流地址和推流码
             self.update_stream_url("", "")
 
-            # 结束 MediaSDK_Server 进程
-            try:
-                for proc in psutil.process_iter(['name']):
-                    if proc.info['name'] == 'MediaSDK_Server.exe':
-                        proc.kill()
-                        self.gui.log_to_console("已终止 MediaSDK_Server 进程")
-            except Exception as e:
-                self.gui.log_to_console(f"（可忽略该报错）尝试终止 MediaSDK_Server 进程时出错: {str(e)}")
-
-            if self.listening_all.get():
-                # 获取所有接口的实际名称
-                selected_interfaces = []
-                for iface_display in self.interface_combo['values']:
-                    # 从显示名称中提取实际的接口名称
-                    actual_name = iface_display.split(" [")[0].strip()
-                    selected_interfaces.append(actual_name)
-                # 启动多接口捕获
-                self.capture.start_multi(selected_interfaces)
+            if self.file_mode.get():
+                # 启动日志模式抓取推流码
+                self.log_capture.start()
+                
             else:
-                # 获取选中接口的实际名称
-                selected_display = self.selected_interface.get()
-                if not selected_display:
-                    messagebox.showerror("错误", "请先选择网络接口")
-                    return
-                # 从显示名称中提取实际的接口名称
-                actual_name = selected_display.split(" [")[0].strip()
-                # 启动单接口捕获
-                self.capture.start(actual_name)
+                self.gui.log_to_console("已开启抓包模式抓取推流")
+                # 结束 MediaSDK_Server 进程
+                try:
+                    for proc in psutil.process_iter(['name']):
+                        if proc.info['name'] == 'MediaSDK_Server.exe':
+                            proc.kill()
+                            self.gui.log_to_console("已终止 MediaSDK_Server 进程")
+                except Exception as e:
+                    self.gui.log_to_console(f"（可忽略该报错）尝试终止 MediaSDK_Server 进程时出错: {str(e)}")
+
+                if self.listening_all.get():
+                    # 获取所有接口的实际名称
+                    selected_interfaces = []
+                    for iface_display in self.interface_combo['values']:
+                        # 从显示名称中提取实际的接口名称
+                        actual_name = iface_display.split(" [")[0].strip()
+                        selected_interfaces.append(actual_name)
+                    # 启动多接口捕获
+                    self.capture.start_multi(selected_interfaces)
+                else:
+                    # 获取选中接口的实际名称
+                    selected_display = self.selected_interface.get()
+                    if not selected_display:
+                        messagebox.showerror("错误", "请先选择网络接口")
+                        return
+                    # 从显示名称中提取实际的接口名称
+                    actual_name = selected_display.split(" [")[0].strip()
+                    # 启动单接口捕获
+                    self.capture.start(actual_name)
         else:
-            # 停止捕获
             self.is_capturing = False
             self.capture_btn.configure(text="开始捕获")
-            self.on_listening_changed()
             self.status_text.set("已停止")
-            self.capture.stop()
+            self.on_listening_changed()
+            # 停止捕获
+            if self.file_mode.get():
+                self.log_capture.stop()
+            else:
+                self.gui.log_to_console("已停止抓包模式抓取推流")
+                self.capture.stop()
+            
+            
 
     def copy_to_clipboard(self, text):
         """复制内容到剪贴板"""
@@ -269,8 +295,24 @@ class ControlPanel:
     def save_listening_config(self):
         """保存监听配置"""
         from utils.config import set_config
-
         set_config("listening_all", self.listening_all.get())
+        
+        
+    def load_file_mode_config(self):
+        """加载文件模式配置"""
+        from utils.config import get_config,set_config
+        file_mode = get_config("file_mode")
+        if file_mode is not None:
+            self.file_mode.set(file_mode)
+        else:
+            # 如果配置不存在，设置默认值为False并保存
+            self.file_mode.set(False)
+            set_config("file_mode", False)
+
+    def file_mode_changed(self):
+        """文件模式改变时的回调"""
+        from utils.config import set_config
+        set_config("file_mode", self.file_mode.get())
 
     def on_listening_changed(self):
         """监听设置改变时的回调"""
@@ -313,9 +355,9 @@ class ControlPanel:
             self.test_btn.configure(state="normal")
             self.capture_btn.configure(state="normal")
             if has_data:
-                messagebox.showinfo("检测结果", "接口可用，已检测到数据流。工具可正常使用，如果不能捕获到推流码，请检查本地是否开了过多软件（如浏览器看直播、视频等）")
+                messagebox.showinfo("检测结果", "接口可用，已检测到数据流。工具可正常使用，如果不能捕获到推流码，请检查本地是否开了过多软件（如浏览器看直播、视频等），或请尝试勾选日志模式后抓取推流信息。")
             else:
-                messagebox.showwarning("检测结果", "接口可能不可用，未检测到数据流，请更换其他接口尝试，如果勾选了监听所有接口，则本工具可能在您的环境下可能无法正常使用")
+                messagebox.showwarning("检测结果", "接口可能不可用，未检测到数据流，请更换其他接口尝试，如果勾选了监听所有接口，则本工具可能在您的环境下可能无法正常使用，或请尝试勾选日志模式后抓取推流信息。")
 
         # 获取要测试的接口
         if self.listening_all.get():
