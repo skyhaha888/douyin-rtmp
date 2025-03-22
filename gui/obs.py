@@ -5,6 +5,7 @@ import json
 from utils.config import load_obs_config
 from utils.content_config import OBS_HELP_TEXT
 import psutil
+from utils.process import ProcessThreadManager
 
 
 class OBSPanel:
@@ -87,6 +88,16 @@ class OBSPanel:
             obs_btn_frame3, text="一键解决重连", command=self.solve_repeat_connect_obs, width=12
         ).pack(side=tk.LEFT, padx=5)
 
+        # OBS按钮组4
+        obs_btn_frame4 = ttk.Frame(obs_frame)
+        obs_btn_frame4.grid(row=4, column=0, columnspan=2, pady=(5, 2))
+        ttk.Button(
+            obs_btn_frame4, text="帮助说明", command=self.show_obs_help, width=12
+        ).pack(side=tk.LEFT, padx=5)
+        ttk.Button(
+            obs_btn_frame4, text="↑还原重连配置", command=self.kill_media_sdk_server, width=12
+        ).pack(side=tk.LEFT, padx=5)
+
     # 这里添加所有OBS相关的方法
     def configure_obs_path(self):
         """配置OBS路径"""
@@ -127,15 +138,36 @@ class OBSPanel:
     def solve_repeat_connect_obs(self):
         """解决重复连接OBS的问题"""
         self.logger.info("开始处理重连问题...")
-        # 结束 MediaSDK_Server 进程
+        
         try:
-            for proc in psutil.process_iter(['name']):
-                if proc.info['name'] == 'MediaSDK_Server.exe':
-                    proc.kill()
-                    self.logger.info("已处理重连，请确认重连问题是否仍然存在")
+            # 创建进程管理器实例
+            process_manager = ProcessThreadManager()
+            # 设置日志器
+            process_manager.logger = self.logger
+            
+            # 查找 MediaSDK_Server.exe 进程
+            target_process = "MediaSDK_Server.exe"
+            pid = process_manager.find_process_by_name(target_process)
+            
+            if pid:
+                # 获取最活跃的线程
+                active_thread = process_manager.get_most_active_thread(pid)
+                if active_thread:
+                    # 挂起该线程
+                    if process_manager.suspend_thread(active_thread.id):
+                        self.logger.info("已挂起最活跃线程，请确认重连问题是否已解决")
+                    else:
+                        self.logger.error("挂起线程失败")
         except Exception as e:
-            self.logger.info(f"处理重连失败: {str(e)}")
-        self.logger.info("处理重连问题结束，如果仍然重连，请尝试重启obs")
+            self.logger.error(f"处理重连失败: {str(e)}")
+        
+        self.logger.info("处理重连问题结束，如果问题仍然存在，请尝试重启OBS和直播伴侣后重试")
+        
+    def kill_media_sdk_server(self):
+        self.logger.info("正在清除一键解决重连...")
+        process_manager = ProcessThreadManager()
+        process_manager.kill_process_by_name("MediaSDK_Server.exe")
+        self.logger.info("一键解决重连状态已清除")
 
 
     def show_obs_help(self):
