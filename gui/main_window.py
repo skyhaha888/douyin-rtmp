@@ -28,7 +28,7 @@ import requests
 class StreamCaptureGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title(f"抖音直播推流地址获取工具 {VERSION}")
+        self.root.title(f"技术员抖音推流工具 {VERSION}")
         self.root.geometry("800x600")
 
         # 使窗口居中显示
