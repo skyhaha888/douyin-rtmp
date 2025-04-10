@@ -283,7 +283,7 @@ def create_about_dialog(root, version):
     about_text = (
         f"抖音直播推流地址获取工具\n"
         f"版本：{version}\n"
-        f"作者：关水来了\n\n"
+        f"作者：技术员\n\n"
         f"GitHub：{GITHUB_CONFIG['REPO_URL']}\n\n"
         f"本工具仅供学习交流使用"
     )
