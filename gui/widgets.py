@@ -243,7 +243,7 @@ def create_donation_dialog(parent, logger, resource_path):
         "感谢您的支持！另请注意：此捐赠为纯自愿，非强制性，请根据自身情况自愿捐赠，谢谢！\n\n"
         "无论多少都是心意，一分也是对我莫大的鼓励！\n"
         "学生党或者直播没收益就不用啦！当然，大佬请随意~\n"
-        "预祝各位老师们大红大紫！"
+        "预祝各位帅哥美女直播大红大紫！"
     )
     text_label = ttk.Label(
         main_frame, 
